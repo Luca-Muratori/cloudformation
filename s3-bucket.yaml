@@ -1,0 +1,7 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cloudformation template for S3 Bucket'
+Resources:
+  s3Bucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: 'Soley-S3-Bucket-Yaml-12355252'
