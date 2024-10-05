@@ -4,7 +4,7 @@ Resources:
   MyVPC:
     Type: AWS::EC2::VPC
     Properties:
-      CidrBlock: 172.16.0.0/16
+      CidrBlock: 10.0.0.0/16
       EnableDnsSupport: true
       EnableDnsHostnames: true
       Tags:
@@ -19,7 +19,7 @@ Resources:
         - !GetAZs ''
       VpcId: !Ref MyVPC
       MapPublicIpOnLaunch: true
-      CidrBlock: 172.16.1.0/24
+      CidrBlock: 10.0.1.0/16
       Tags:
         - Key: Name
           Value: PublicSubnet1A
@@ -31,7 +31,7 @@ Resources:
         - 0
         - !GetAZs ''
       VpcId: !Ref MyVPC
-      CidrBlock: 172.16.2.0/24
+      CidrBlock: 10.0.2.0/16
       Tags:
         - Key: Name
           Value: AppPrivateSubnet1A
@@ -43,31 +43,31 @@ Resources:
         - 0
         - !GetAZs ''
       VpcId: !Ref MyVPC
-      CidrBlock: 172.16.3.0/24
+      CidrBlock: 10.0.4.0/16
       Tags:
         - Key: Name
           Value: DataPrivateSubnet1A
 
-  PublicSubnet2B:
+  PublicSubnet1B:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone: !Select
         - 1
         - !GetAZs ''
       VpcId: !Ref MyVPC
-      CidrBlock: 172.16.4.0/24
+      CidrBlock: 10.0.5.0/16
       Tags:
         - Key: Name
           Value: PublicSubnet1B
 
-  AppPrivateSubnet2B:
+  AppPrivateSubnet1B:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone: !Select
         - 1
         - !GetAZs ''
       VpcId: !Ref MyVPC
-      CidrBlock: 172.16.5.0/24
+      CidrBlock: 10.0.6.0/16
       Tags:
         - Key: Name
           Value: AppPrivateSubnet1B
@@ -79,7 +79,7 @@ Resources:
         - 1
         - !GetAZs ''
       VpcId: !Ref MyVPC
-      CidrBlock: 172.16.6.0/24
+      CidrBlock: 10.0.7.0/16
       Tags:
         - Key: Name
           Value: DataPrivateSubnet1B
@@ -90,6 +90,7 @@ Resources:
       Tags:
         - Key: Name
           Value: MyVPC-IGW
+  
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
@@ -121,9 +122,9 @@ Resources:
   BastionHost:
     Type: AWS::EC2::Instance
     Properties:
-      KeyName: !Ref bastion
+      KeyName: bastionpem
       ImageId: ami-0592c673f0b1e7665
-      SubnetId: !Ref PublicSubnet1B
+      SubnetId: !Ref PublicSubnet1A
       InstanceType: t2.micro
       SecurityGroupIds:
         - !Ref BastionSG
@@ -134,14 +135,64 @@ Resources:
   BastionSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: null
       GroupDescription: Enable SSH access
       VpcId: !Ref MyVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: 172.12.9.0/24
+          CidrIp: 123.0.0.0/24
       Tags:
         - Key: Name
           Value: BastionHost
+  
+  AppInstance1A:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: bastionpem
+      ImageId: ami-0592c673f0b1e7665
+      SubnetId: !Ref AppPrivateSubnet1A
+      SecurityGroupsIds:
+        - !Ref AppInstance1ASG
+      Tags:
+        - Key: Name
+          Value: App1
+  
+  AppInstance1B:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: bastionpem
+      ImageId: ami-0592c673f0b1e7665
+      SubnetId: !Ref AppPrivateSubnet1B
+      SecurityGroupsIds:
+        - !Ref AppInstance1BSG
+      Tags:
+        - Key: Name
+          Value: App2
+  
+  
+  AppInstance1ASG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: allow ssh from bastion
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref BastionSG
+
+  
+  AppInstance1BSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: allow icmp from App1 from bastion
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          SourceSecurityGroupId: !Ref AppInstance1ASG
+      
